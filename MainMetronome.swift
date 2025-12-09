@@ -7,8 +7,6 @@
 import AVFoundation
 import SwiftUI
 
-
-
 struct MainMetronome: View {
     @State var tempo: Double = 60.0
     @State var isPlaying: Bool = false
@@ -16,7 +14,7 @@ struct MainMetronome: View {
     @State private var clickPlayer: AVAudioPlayer?
     @State private var accentPlayer: AVAudioPlayer?
     @State private var currentBeat: Int = 1
-    @State private var timeSignature: Int = 9
+    @State private var timeSignature: Int = 13
     
     func setupAudio() {
         guard let url = Bundle.main.url(forResource: "tone-800", withExtension: "wav") else { return }
@@ -38,6 +36,7 @@ struct MainMetronome: View {
     
     func startMetronome() {
         timer = Timer.scheduledTimer(withTimeInterval: beatInterval, repeats: true) {_ in playClick()}
+        playClick()
     }
     func stopMetronome() {
         currentBeat = 1
@@ -60,6 +59,8 @@ struct MainMetronome: View {
         60.0/tempo
     }
     
+    private let itemsPerRow = 8
+    
     var body: some View {
         ZStack {
             Color(red:0.17, green:0.17, blue:0.18)
@@ -73,19 +74,24 @@ struct MainMetronome: View {
                     .onChange(of: tempo) {
                         if isPlaying {
                             stopMetronome()
-                            startMetronome()
+                            isPlaying = false
                         }
                     }
                     .padding(.horizontal)
-                let columns = Array(repeating: GridItem(.flexible()), count: 8)
-                LazyVGrid(columns: columns, alignment: .center) {
-                    ForEach(1...timeSignature, id: \.self) { beat in
-                        Circle()
-                            .fill(
-                                beat == currentBeat && isPlaying ? Color.blue :
-                                (beat == 1) ? Color.white : Color.gray
-                            )
-                            .frame(width:30,  height:30)
+                
+                VStack(spacing: 10) {
+                    ForEach(0..<(timeSignature + itemsPerRow - 1) / itemsPerRow, id: \.self) {row in
+                        HStack(spacing: 10) {
+                            ForEach(Array((row * itemsPerRow + 1)...min((row + 1) * itemsPerRow, timeSignature)), id: \.self) {beat in
+                                Circle()
+                                    .fill(
+                                        (beat == (currentBeat == 1 ? timeSignature : currentBeat - 1) && isPlaying) ? Color.blue :
+                                        (beat == 1) ? Color.white : Color.gray
+                                    )
+                                    .frame(width:30, height:30)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
                     }
                 }
                 
