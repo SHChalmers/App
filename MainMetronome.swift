@@ -2,7 +2,7 @@
 //  MainMetronome.swift
 //  Metronom
 //
-//  Created by Thomas Hansson on 2025-12-04.
+//  Created by Simon Hansson on 2025-12-04.
 //
 import AVFoundation
 import SwiftUI
@@ -14,7 +14,8 @@ struct MainMetronome: View {
     @State private var clickPlayer: AVAudioPlayer?
     @State private var accentPlayer: AVAudioPlayer?
     @State private var currentBeat: Int = 1
-    @State private var timeSignature: Int = 13
+    @State private var timeSignature: Int = 4
+    @State private var accentedBeats: Set<Int> = [1]
     
     func setupAudio() {
         guard let url = Bundle.main.url(forResource: "tone-800", withExtension: "wav") else { return }
@@ -44,7 +45,7 @@ struct MainMetronome: View {
         timer = nil
     }
     func playClick() {
-        if currentBeat == 1 {
+        if accentedBeats.contains(currentBeat) {
             accentPlayer?.play()
         } else {
             clickPlayer?.play()
@@ -78,24 +79,31 @@ struct MainMetronome: View {
                         }
                     }
                     .padding(.horizontal)
-                
                 VStack(spacing: 10) {
                     ForEach(0..<(timeSignature + itemsPerRow - 1) / itemsPerRow, id: \.self) {row in
-                        HStack(spacing: 10) {
+                        HStack(spacing: 8) {
                             ForEach(Array((row * itemsPerRow + 1)...min((row + 1) * itemsPerRow, timeSignature)), id: \.self) {beat in
                                 Circle()
                                     .fill(
                                         (beat == (currentBeat == 1 ? timeSignature : currentBeat - 1) && isPlaying) ? Color.blue :
-                                        (beat == 1) ? Color.white : Color.gray
+                                            accentedBeats.contains(beat) ? Color.white : Color.gray
                                     )
                                     .frame(width:30, height:30)
+                                    .onTapGesture {
+                                        if accentedBeats.contains(beat) {
+                                            accentedBeats.remove(beat)
+                                        } else {
+                                            accentedBeats.insert(beat)
+                                        }
+                                    }
                             }
                         }
                         .frame(maxWidth: .infinity)
                     }
                 }
+                .frame(width: .infinity, height: 100)
                 
-                Button{
+                Button {
                     isPlaying.toggle()
                     if isPlaying {
                         startMetronome()
@@ -109,14 +117,14 @@ struct MainMetronome: View {
                 }
                 .frame(width: 60, height:60)
             }
-            .padding()
         }
-        .onAppear {
-            setupAudio()
-        }
-        .onDisappear {
-            stopMetronome()
-        }
+        .padding()
+    }
+    .onAppear {
+        setupAudio()
+    }
+    .onDisappear {
+        stopMetronome()
     }
 }
 
