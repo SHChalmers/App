@@ -86,7 +86,7 @@ struct MainMetronome: View {
                                 Circle()
                                     .fill(
                                         (beat == (currentBeat == 1 ? timeSignature : currentBeat - 1) && isPlaying) ? Color.blue :
-                                            accentedBeats.contains(beat) ? Color.white : Color.gray
+                                        accentedBeats.contains(beat) ? Color.white : Color.gray
                                     )
                                     .frame(width:30, height:30)
                                     .onTapGesture {
@@ -101,7 +101,7 @@ struct MainMetronome: View {
                         .frame(maxWidth: .infinity)
                     }
                 }
-                .frame(width: .infinity, height: 100)
+                .frame(maxWidth: .infinity, height: 100)
                 
                 Button {
                     isPlaying.toggle()
@@ -117,14 +117,14 @@ struct MainMetronome: View {
                 }
                 .frame(width: 60, height:60)
             }
+            .padding()
         }
-        .padding()
-    }
-    .onAppear {
-        setupAudio()
-    }
-    .onDisappear {
-        stopMetronome()
+        .onAppear {
+            setupAudio()
+        }
+        .onDisappear {
+            stopMetronome()
+        }
     }
 }
 
