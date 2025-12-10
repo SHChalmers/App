@@ -15,6 +15,7 @@ struct MainMetronome: View {
     @State private var accentPlayer: AVAudioPlayer?
     @State private var currentBeat: Int = 1
     @State private var timeSignature: Int = 4
+    @State private var subdivision: Int = 1
     @State private var accentedBeats: Set<Int> = [1]
     @State private var showSettings: Bool = false
     
@@ -120,7 +121,7 @@ struct MainMetronome: View {
                         .frame(maxWidth: .infinity)
                     }
                 }
-                .frame(maxWidth: .infinity, height: 100)
+                .frame(width: .infinity, height: 100)
                 
                 Button {
                     isPlaying.toggle()
@@ -153,6 +154,11 @@ struct MainMetronome: View {
         }
         .onDisappear {
             stopMetronome()
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView(timeSignature: $timeSignature, subdivision: $subdivision)
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
         }
     }
 }
