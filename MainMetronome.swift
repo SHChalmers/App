@@ -96,7 +96,7 @@ struct MainMetronome: View {
                         HStack(spacing: 8) {
                             ForEach(Array((row * itemsPerRow + 1)...min((row + 1) * itemsPerRow, timeSignature)), id: \.self) {beat in
                                 Circle()
-                                    .fill(circleColor(for: beat)
+                                    .fill(circleColor(for: beat))
                                     .frame(width:30, height:30)
                                     .onTapGesture {
                                         if accentedBeats.contains(beat) {
@@ -110,7 +110,7 @@ struct MainMetronome: View {
                         .frame(maxWidth: .infinity)
                     }
                 }
-                .frame(width: .infinity, height: 100)
+                .frame(maxWidth: .infinity, height: 100)
                 
                 Button {
                     isPlaying.toggle()
@@ -125,13 +125,16 @@ struct MainMetronome: View {
                         .foregroundColor(.blue)
                 }
                 .frame(width: 60, height:60)
-                HStack(padding: 20) {
+                
+                HStack {
                     Button {
                         showSettings = true
                     } label: {
                         Image(systemName:"gearshape.fill")
+                            .foregroundColor(.white)
                     }
                 }
+                .padding()
             }
             .padding()
         }
