@@ -16,6 +16,7 @@ struct MainMetronome: View {
     @State private var currentBeat: Int = 1
     @State private var timeSignature: Int = 4
     @State private var accentedBeats: Set<Int> = [1]
+    @State private var showSettings: Bool = false
     
     func setupAudio() {
         guard let url = Bundle.main.url(forResource: "tone-800", withExtension: "wav") else { return }
@@ -62,6 +63,17 @@ struct MainMetronome: View {
     
     private let itemsPerRow = 8
     
+    func circleColor(for beat: Int) -> Color {
+        let displayedBeat = currentBeat == 1 ? timeSignature : currentBeat - 1
+        if beat == displayedBeat && isPlaying {
+            return Color.blue
+        } else if accentedBeats.contains(beat) {
+            return Color.white
+        } else {
+            return Color.gray
+        }
+    }
+    
     var body: some View {
         ZStack {
             Color(red:0.17, green:0.17, blue:0.18)
@@ -84,10 +96,7 @@ struct MainMetronome: View {
                         HStack(spacing: 8) {
                             ForEach(Array((row * itemsPerRow + 1)...min((row + 1) * itemsPerRow, timeSignature)), id: \.self) {beat in
                                 Circle()
-                                    .fill(
-                                        (beat == (currentBeat == 1 ? timeSignature : currentBeat - 1) && isPlaying) ? Color.blue :
-                                        accentedBeats.contains(beat) ? Color.white : Color.gray
-                                    )
+                                    .fill(circleColor(for: beat)
                                     .frame(width:30, height:30)
                                     .onTapGesture {
                                         if accentedBeats.contains(beat) {
@@ -101,7 +110,7 @@ struct MainMetronome: View {
                         .frame(maxWidth: .infinity)
                     }
                 }
-                .frame(maxWidth: .infinity, height: 100)
+                .frame(width: .infinity, height: 100)
                 
                 Button {
                     isPlaying.toggle()
@@ -116,6 +125,13 @@ struct MainMetronome: View {
                         .foregroundColor(.blue)
                 }
                 .frame(width: 60, height:60)
+                HStack(padding: 20) {
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Image(systemName:"gearshape.fill")
+                    }
+                }
             }
             .padding()
         }
