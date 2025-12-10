@@ -63,6 +63,16 @@ struct MainMetronome: View {
     
     private let itemsPerRow = 8
     
+    var numberOfRows: Int {
+        (timeSignature + itemsPerRow - 1) / itemsPerRow
+    }
+    
+    func beatsForRow(_ row: Int) -> [Int] {
+        let start = row * itemsPerRow + 1
+        let end = min((row + 1) * itemsPerRow, timeSignature)
+        return Array(start...end)
+    }
+    
     func circleColor(for beat: Int) -> Color {
         let displayedBeat = currentBeat == 1 ? timeSignature : currentBeat - 1
         if beat == displayedBeat && isPlaying {
@@ -92,9 +102,9 @@ struct MainMetronome: View {
                     }
                     .padding(.horizontal)
                 VStack(spacing: 10) {
-                    ForEach(0..<(timeSignature + itemsPerRow - 1) / itemsPerRow, id: \.self) {row in
+                    ForEach(0..<numberOfRows, id: \.self) {row in
                         HStack(spacing: 8) {
-                            ForEach(Array((row * itemsPerRow + 1)...min((row + 1) * itemsPerRow, timeSignature)), id: \.self) {beat in
+                            ForEach(beatsForRow(row), id: \.self) {beat in
                                 Circle()
                                     .fill(circleColor(for: beat))
                                     .frame(width:30, height:30)
