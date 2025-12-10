@@ -13,11 +13,13 @@ struct MainMetronome: View {
     @State private var timer: Timer?
     @State private var clickPlayer: AVAudioPlayer?
     @State private var accentPlayer: AVAudioPlayer?
+    @State private var lowerPlayer: AVAudioPlayer?
     @State private var currentBeat: Int = 1
     @State private var timeSignature: Int = 4
     @State private var subdivision: Int = 1
     @State private var accentedBeats: Set<Int> = [1]
     @State private var showSettings: Bool = false
+    @State private var quarterNote: Int = 1
     
     func setupAudio() {
         guard let url = Bundle.main.url(forResource: "tone-800", withExtension: "wav") else { return }
@@ -34,6 +36,13 @@ struct MainMetronome: View {
         } catch {
             print("Error loading sound: \(error)")
         }
+        guard let lowerURL = Bundle.main.url(forResource: "tone-800lower", withExtension: "wav") else { return }
+        do {
+            lowerPlayer = try AVAudioPlayer(contentsOf: lowerURL)
+            lowerPlayer?.prepareToPlay()
+        } catch {
+            print("Error loading sound: \(error)")
+        }
         
     }
     
@@ -47,19 +56,26 @@ struct MainMetronome: View {
         timer = nil
     }
     func playClick() {
+        print(currentBeat)
         if accentedBeats.contains(currentBeat) {
             accentPlayer?.play()
-        } else {
+        } else if currentBeat % subdivision == 1 {
             clickPlayer?.play()
+            quarterNote += 1
+        } else {
+            lowerPlayer?.play()
         }
         currentBeat += 1
-        if currentBeat > timeSignature {
+        if currentBeat > timeSignature*subdivision {
             currentBeat = 1
+        }
+        if quarterNote > timeSignature {
+            quarterNote = 1
         }
     }
     
     var beatInterval: TimeInterval {
-        60.0/tempo
+        60.0/(tempo*Double(subdivision))
     }
     
     private let itemsPerRow = 8
@@ -75,7 +91,7 @@ struct MainMetronome: View {
     }
     
     func circleColor(for beat: Int) -> Color {
-        let displayedBeat = currentBeat == 1 ? timeSignature : currentBeat - 1
+        let displayedBeat = quarterNote == 1 ? timeSignature : quarterNote - 1
         if beat == displayedBeat && isPlaying {
             return Color.blue
         } else if accentedBeats.contains(beat) {
