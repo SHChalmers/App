@@ -15,11 +15,12 @@ struct MainMetronome: View {
     @State private var accentPlayer: AVAudioPlayer?
     @State private var lowerPlayer: AVAudioPlayer?
     @State private var currentBeat: Int = 1
+    @State private var currentSub: Int = 0
     @State private var timeSignature: Int = 4
     @State private var subdivision: Int = 1
     @State private var accentedBeats: Set<Int> = [1]
     @State private var showSettings: Bool = false
-    @State private var quarterNote: Int = 1
+    @State private var showFullscreen: Bool = false
     
     func setupAudio() {
         guard let url = Bundle.main.url(forResource: "tone-800", withExtension: "wav") else { return }
@@ -36,14 +37,13 @@ struct MainMetronome: View {
         } catch {
             print("Error loading sound: \(error)")
         }
-        guard let lowerURL = Bundle.main.url(forResource: "tone-800lower", withExtension: "wav") else { return }
+        guard let lowerurl = Bundle.main.url(forResource: "tone-800lower", withExtension: "wav") else { return }
         do {
-            lowerPlayer = try AVAudioPlayer(contentsOf: lowerURL)
+            lowerPlayer = try AVAudioPlayer(contentsOf: lowerurl)
             lowerPlayer?.prepareToPlay()
         } catch {
             print("Error loading sound: \(error)")
         }
-        
     }
     
     func startMetronome() {
@@ -52,30 +52,34 @@ struct MainMetronome: View {
     }
     func stopMetronome() {
         currentBeat = 1
+        currentSub = 0
         timer?.invalidate()
         timer = nil
     }
     func playClick() {
-        print(currentBeat)
-        if accentedBeats.contains(currentBeat) {
-            accentPlayer?.play()
-        } else if currentBeat % subdivision == 1 {
-            clickPlayer?.play()
-            quarterNote += 1
+        let isBeat = currentSub == 0
+        if isBeat {
+            if accentedBeats.contains(currentBeat) {
+                accentPlayer?.play()
+            } else {
+                clickPlayer?.play()
+            }
+            currentBeat += 1
+            if currentBeat > timeSignature {
+                currentBeat = 1
+            }
+            
         } else {
             lowerPlayer?.play()
         }
-        currentBeat += 1
-        if currentBeat > timeSignature*subdivision {
-            currentBeat = 1
-        }
-        if quarterNote > timeSignature {
-            quarterNote = 1
+        currentSub += 1
+        if currentSub >= subdivision {
+            currentSub = 0
         }
     }
     
     var beatInterval: TimeInterval {
-        60.0/(tempo*Double(subdivision))
+        60.0/(tempo * Double(subdivision))
     }
     
     private let itemsPerRow = 8
@@ -91,7 +95,7 @@ struct MainMetronome: View {
     }
     
     func circleColor(for beat: Int) -> Color {
-        let displayedBeat = quarterNote == 1 ? timeSignature : quarterNote - 1
+        let displayedBeat = currentBeat == 1 ? timeSignature : currentBeat - 1
         if beat == displayedBeat && isPlaying {
             return Color.blue
         } else if accentedBeats.contains(beat) {
@@ -103,8 +107,9 @@ struct MainMetronome: View {
     
     var body: some View {
         ZStack {
-            Color(red:0.17, green:0.17, blue:0.18)
+            Color(red: showFullscreen ? 0 : 0.11, green: showFullscreen ? 0 : 0.11, blue: showFullscreen ? 0 : 0.12)
                 .ignoresSafeArea()
+                .animation(.easeInOut(duration: showFullscreen ? 0.05 : 0.4).delay(showFullscreen ? 0 : 0.3), value: showFullscreen)
             VStack {
                 Text("\(Int(tempo))")
                     .font(.system(size: 50))
@@ -153,15 +158,23 @@ struct MainMetronome: View {
                 }
                 .frame(width: 60, height:60)
                 
-                HStack {
+                HStack(spacing: 30) {
                     Button {
                         showSettings = true
+                        isPlaying = false
+                        stopMetronome()
                     } label: {
                         Image(systemName:"gearshape.fill")
-                            .foregroundColor(.white)
+                    }
+                    Button {
+                        showFullscreen = true
+                    } label: {
+                        Image(systemName:"arrow.up.left.and.arrow.down.right")
                     }
                 }
                 .padding()
+                .font( .title)
+                .foregroundStyle(.white)
             }
             .padding()
         }
@@ -175,6 +188,9 @@ struct MainMetronome: View {
             SettingsView(timeSignature: $timeSignature, subdivision: $subdivision)
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
+        }
+        .fullScreenCover(isPresented: $showFullscreen) {
+            FullscreenMetronome(currentBeat: $currentBeat, timeSignature: $timeSignature, isPlaying: $isPlaying, startMetronome: startMetronome, stopMetronome: stopMetronome)
         }
     }
 }
