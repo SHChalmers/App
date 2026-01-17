@@ -7,6 +7,49 @@
 import AVFoundation
 import SwiftUI
 
+struct BarView: View {
+    @State private var selectedTab = 0
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            TabView(selection: $selectedTab) {
+                MainMetronome()
+                    .tag(0)
+                RudimentList()
+                    .tag(1)
+            }
+            //.tabViewStyle(.page(indexDisplayMode: .never))
+            HStack() {
+                Spacer()
+                Button(action: {
+                    withAnimation {
+                        selectedTab = 0
+                    }
+                }) {
+                    Image(systemName: "metronome.fill")
+                        .font(.system(size:30))
+                        .foregroundColor(selectedTab == 0 ? .blue : .white)
+                }
+                Spacer()
+                Button(action: {
+                    withAnimation {
+                        selectedTab = 1
+                    }
+                }) {
+                    Image(systemName: "music.note.list")
+                        .font(.system(size:30))
+                        .foregroundColor(selectedTab == 1 ? .blue : .white)
+                }
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .frame(alignment: .center)
+            .background(Color(red: 0.11, green: 0.11, blue: 0.12))
+        }
+    }
+}
+
 struct MainMetronome: View {
     @State var tempo: Double = 60.0
     @State var isPlaying: Bool = false
@@ -195,6 +238,49 @@ struct MainMetronome: View {
     }
 }
 
+struct Rudiment: Identifiable, Codable {
+    let id: Int
+    let category: String
+    let bpm: Int
+    let name: String
+}
+
+struct RudimentList: View {
+    @State private var rudiments: [Rudiment] = []
+    var body: some View {
+        ZStack {
+            Color(red: 0.11, green: 0.11, blue: 0.12)
+                .ignoresSafeArea()
+            List(rudiments) { rudiment in
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text(rudiment.name)
+                            .foregroundColor(.white)
+                        Text(rudiment.category)
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                }
+                .listRowBackground(Color(red: 0.11, green: 0.11, blue: 0.12))
+            }
+            .scrollContentBackground(.hidden)
+            .background(Color(red: 0.11, green: 0.11, blue: 0.12))
+        }
+        .onAppear {
+            loadRudiments()
+        }
+    }
+    func loadRudiments() {
+        guard let url = Bundle.main.url(forResource: "rudiments", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let decoded = try? JSONDecoder().decode([Rudiment].self, from: data) else {
+            print("Failed to load rudiments")
+            return
+        }
+        rudiments = decoded
+    }
+}
+
 #Preview {
-    MainMetronome()
+    BarView()
 }
