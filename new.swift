@@ -272,13 +272,13 @@ struct Rudiment: Identifiable, Codable {
     let category: String
     var bpm: Int
     let name: String
-    var favorite: Bool = false
 }
 
 struct RudimentList: View {
     @State private var rudiments: [Rudiment] = []
     @State private var showingMenu: Bool = false
     @State private var selectedCategory: String = "Single Beat Combinations"
+    @State private var favoriteIds: Set<Int> = []
     
     var categories: [String] {
         var cats = Array(Set(rudiments.map { $0.category })).sorted()
@@ -287,10 +287,10 @@ struct RudimentList: View {
     }
     
     var sortedRudiments: [Rudiment] {
-        if selectedCategory.isEmpty {
+        if selectedCategory == "Favourite" {
+            return rudiments.filter { favoriteIds.contains($0.id) }
+        } else if selectedCategory.isEmpty {
             return rudiments
-        } else if selectedCategory == "Favourite" {
-            return rudiments.filter { $0.favorite }
         } else {
             return rudiments.filter { $0.category == selectedCategory }
         }
@@ -331,16 +331,12 @@ struct RudimentList: View {
                                     Spacer()
                                     Text(String(rudiment.bpm))
                                         .foregroundColor(.white)
-                                    Button {
-                                        if let index = rudiments.firstIndex(where: { $0.id == rudiment.id }) {
-                                            rudiments[index].favorite.toggle()
-                                            saveRudiments()
-                                        }
-                                    } label: {
-                                        Image(systemName: rudiment.favorite ? "star.fill" : "star")
-                                            .foregroundColor(rudiment.favorite ? .yellow : .gray)
-                                    }
-                                    .buttonStyle(.plain)
+                                    Image(systemName: favoriteIds.contains(rudiment.id) ? "star.fill" : "star")
+                                        .foregroundColor(favoriteIds.contains(rudiment.id) ? .yellow : .gray)
+                                        .contentShape(Rectangle())
+                                        .highPriorityGesture(TapGesture().onEnded {
+                                            toggleFavorite(rudiment.id)
+                                        })
                                 }
                             }
                             .listRowBackground(Color(red: 0.11, green: 0.11, blue: 0.12))
@@ -351,6 +347,7 @@ struct RudimentList: View {
             }
             .onAppear {
                 loadRudiments()
+                loadFavorites()
             }
         }
     }
@@ -390,6 +387,28 @@ struct RudimentList: View {
         if let encoded = try? JSONEncoder().encode(rudiments) {
             try? encoded.write(to: fileURL)
         }
+    }
+    
+    func loadFavorites() {
+        if let data = UserDefaults.standard.data(forKey: "favoriteRudimentIds"),
+           let ids = try? JSONDecoder().decode([Int].self, from: data) {
+            favoriteIds = Set(ids)
+        }
+    }
+    
+    func saveFavorites() {
+        if let encoded = try? JSONEncoder().encode(Array(favoriteIds)) {
+            UserDefaults.standard.set(encoded, forKey: "favoriteRudimentIds")
+        }
+    }
+    
+    func toggleFavorite(_ id: Int) {
+        if favoriteIds.contains(id) {
+            favoriteIds.remove(id)
+        } else {
+            favoriteIds.insert(id)
+        }
+        saveFavorites()
     }
 }
 
@@ -456,15 +475,6 @@ struct RudimentPractice: View {
                             .padding()
                     }
                     Spacer()
-                    Button {
-                        rudiment.favorite.toggle()
-                        onSave?()
-                    } label: {
-                        Image(systemName: rudiment.favorite ? "star.fill" : "star")
-                            .font(.title2)
-                            .foregroundColor(rudiment.favorite ? .yellow : .gray)
-                            .padding()
-                    }
                 }
                 Spacer()
             }
