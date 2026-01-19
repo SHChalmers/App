@@ -364,11 +364,13 @@ struct RudimentPractice: View {
     @State private var timer: Timer?
     @State private var currentBeat: Int = 1
     @State private var tempo: Double = 60
+    @Environment(\.dismiss) private var dismiss
     
     private let audioManager = AudioManager.shared
     var body: some View {
         ZStack {
             Color(red:0.11, green:0.11, blue:0.12)
+                .ignoresSafeArea()
             VStack {
                 Text("\(Int(tempo))")
                     .foregroundStyle(.white)
@@ -395,7 +397,20 @@ struct RudimentPractice: View {
                 }
                 .frame(width: 60, height:60)
             }
+            VStack {
+                HStack {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "chevron.left")
+                            .font(.title2)
+                            .foregroundColor(.white)
+                            .padding()
+                    }
+                    Spacer()
+                }
+                Spacer()
+            }
         }
+        .toolbar(.hidden, for: .navigationBar)
         .onAppear {
             tempo = Double(rudiment.bpm)
         }
