@@ -399,16 +399,28 @@ struct RudimentPractice: View {
             }
             VStack {
                 HStack {
-                    Button(action: { dismiss() }) {
+                    Button(action: { dismiss()
+                        stopMetronome()
+                        isPlaying = false }) {
                         Image(systemName: "chevron.left")
                             .font(.title2)
-                            .foregroundColor(.white)
+                            .foregroundColor(.blue)
                             .padding()
                     }
                     Spacer()
                 }
                 Spacer()
             }
+            VStack {
+                Text(rudiment.category)
+                    .foregroundStyle(.gray)
+                    .font(.system(size:15))
+                Text(rudiment.name)
+                    .foregroundStyle(.white)
+                    .font(.system(size:20))
+                Spacer()
+            }
+            .padding()
         }
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
