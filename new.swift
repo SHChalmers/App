@@ -270,7 +270,7 @@ struct MainMetronome: View {
 struct Rudiment: Identifiable, Codable {
     let id: Int
     let category: String
-    let bpm: Int
+    var bpm: Int
     let name: String
 }
 
@@ -314,7 +314,7 @@ struct RudimentList: View {
                     }
                     List {
                         ForEach(sortedRudiments) { rudiment in
-                            NavigationLink(destination: RudimentPractice(rudiment: binding(for: rudiment))) {
+                            NavigationLink(destination: RudimentPractice(rudiment: binding(for: rudiment), onSave: saveRudiments)) {
                                 HStack {
                                     VStack(alignment: .leading) {
                                         Text(rudiment.name)
@@ -348,6 +348,17 @@ struct RudimentList: View {
     }
     
     func loadRudiments() {
+        // Try to load from Documents directory first (user-modified version)
+        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let fileURL = documentsURL.appendingPathComponent("rudiments.json")
+        
+        if let data = try? Data(contentsOf: fileURL),
+           let decoded = try? JSONDecoder().decode([Rudiment].self, from: data) {
+            rudiments = decoded
+            return
+        }
+        
+        // Fall back to bundle if no user-modified version exists
         guard let url = Bundle.main.url(forResource: "rudiments", withExtension: "json"),
               let data = try? Data(contentsOf: url),
               let decoded = try? JSONDecoder().decode([Rudiment].self, from: data) else {
@@ -355,6 +366,15 @@ struct RudimentList: View {
             return
         }
         rudiments = decoded
+    }
+    
+    func saveRudiments() {
+        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let fileURL = documentsURL.appendingPathComponent("rudiments.json")
+        
+        if let encoded = try? JSONEncoder().encode(rudiments) {
+            try? encoded.write(to: fileURL)
+        }
     }
 }
 
@@ -365,6 +385,7 @@ struct RudimentPractice: View {
     @State private var currentBeat: Int = 1
     @State private var tempo: Double = 60
     @Environment(\.dismiss) private var dismiss
+    var onSave: (() -> Void)?
     
     private let audioManager = AudioManager.shared
     var body: some View {
@@ -396,6 +417,18 @@ struct RudimentPractice: View {
                         .foregroundColor(.blue)
                 }
                 .frame(width: 60, height:60)
+                
+                Button {
+                    rudiment.bpm = Int(tempo)
+                    onSave?()
+                } label: {
+                    Text("Set")
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(Color.blue)
+                        .cornerRadius(8)
+                }
             }
             VStack {
                 HStack {
