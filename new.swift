@@ -272,6 +272,7 @@ struct Rudiment: Identifiable, Codable {
     let category: String
     var bpm: Int
     let name: String
+    var favorite: Bool = false
 }
 
 struct RudimentList: View {
@@ -280,12 +281,16 @@ struct RudimentList: View {
     @State private var selectedCategory: String = "Single Beat Combinations"
     
     var categories: [String] {
-        Array(Set(rudiments.map { $0.category })).sorted()
+        var cats = Array(Set(rudiments.map { $0.category })).sorted()
+        cats.insert("Favourite", at: 0)
+        return cats
     }
     
     var sortedRudiments: [Rudiment] {
         if selectedCategory.isEmpty {
             return rudiments
+        } else if selectedCategory == "Favourite" {
+            return rudiments.filter { $0.favorite }
         } else {
             return rudiments.filter { $0.category == selectedCategory }
         }
@@ -326,6 +331,16 @@ struct RudimentList: View {
                                     Spacer()
                                     Text(String(rudiment.bpm))
                                         .foregroundColor(.white)
+                                    Button {
+                                        if let index = rudiments.firstIndex(where: { $0.id == rudiment.id }) {
+                                            rudiments[index].favorite.toggle()
+                                            saveRudiments()
+                                        }
+                                    } label: {
+                                        Image(systemName: rudiment.favorite ? "star.fill" : "star")
+                                            .foregroundColor(rudiment.favorite ? .yellow : .gray)
+                                    }
+                                    .buttonStyle(.plain)
                                 }
                             }
                             .listRowBackground(Color(red: 0.11, green: 0.11, blue: 0.12))
@@ -441,6 +456,15 @@ struct RudimentPractice: View {
                             .padding()
                     }
                     Spacer()
+                    Button {
+                        rudiment.favorite.toggle()
+                        onSave?()
+                    } label: {
+                        Image(systemName: rudiment.favorite ? "star.fill" : "star")
+                            .font(.title2)
+                            .foregroundColor(rudiment.favorite ? .yellow : .gray)
+                            .padding()
+                    }
                 }
                 Spacer()
             }
