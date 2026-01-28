@@ -43,14 +43,17 @@ class AudioManager: ObservableObject {
     }
     
     func playClick() {
+        clickPlayer?.currentTime = 0
         clickPlayer?.play()
     }
     
     func playAccent() {
+        accentPlayer?.currentTime = 0
         accentPlayer?.play()
     }
     
     func playLower() {
+        lowerPlayer?.currentTime = 0
         lowerPlayer?.play()
     }
 }
@@ -272,25 +275,29 @@ struct Rudiment: Identifiable, Codable {
     let category: String
     var bpm: Int
     let name: String
+    var favorite: Bool
 }
 
 struct RudimentList: View {
     @State private var rudiments: [Rudiment] = []
     @State private var showingMenu: Bool = false
-    @State private var selectedCategory: String = "Single Beat Combinations"
-    @State private var favoriteIds: Set<Int> = []
+    @State private var selectedCategory: String = "Favorites"
     
     var categories: [String] {
-        var cats = Array(Set(rudiments.map { $0.category })).sorted()
-        cats.insert("Favourite", at: 0)
-        return cats
+        // Preserve original JSON order by using first occurrence
+        var seen = Set<String>()
+        return rudiments.compactMap { rudiment in
+            guard !seen.contains(rudiment.category) else { return nil }
+            seen.insert(rudiment.category)
+            return rudiment.category
+        }
     }
     
     var sortedRudiments: [Rudiment] {
-        if selectedCategory == "Favourite" {
-            return rudiments.filter { favoriteIds.contains($0.id) }
-        } else if selectedCategory.isEmpty {
+        if selectedCategory.isEmpty {
             return rudiments
+        } else if selectedCategory == "Favorites" {
+            return rudiments.filter { $0.favorite == true}
         } else {
             return rudiments.filter { $0.category == selectedCategory }
         }
@@ -309,6 +316,9 @@ struct RudimentList: View {
                         }
                         .padding(.trailing, 45)
                         .confirmationDialog("Select Category", isPresented: $showingMenu) {
+                            Button("Favorites") {
+                                selectedCategory = "Favorites"
+                            }
                             ForEach(categories, id: \.self) { category in
                                 Button(category) {
                                     selectedCategory = category
@@ -331,15 +341,20 @@ struct RudimentList: View {
                                     Spacer()
                                     Text(String(rudiment.bpm))
                                         .foregroundColor(.white)
-                                    Image(systemName: favoriteIds.contains(rudiment.id) ? "star.fill" : "star")
-                                        .foregroundColor(favoriteIds.contains(rudiment.id) ? .yellow : .gray)
-                                        .contentShape(Rectangle())
-                                        .highPriorityGesture(TapGesture().onEnded {
-                                            toggleFavorite(rudiment.id)
-                                        })
+                                    Button {
+                                        if let index = rudiments.firstIndex(where: { $0.id == rudiment.id }) {
+                                            rudiments[index].favorite.toggle()
+                                            saveRudiments()
+                                        }
+                                    } label: {
+                                        Image(systemName: rudiment.favorite ? "star.fill" : "star")
+                                            .foregroundColor(rudiment.favorite ? .yellow : .gray)
+                                    }
+                                    .buttonStyle(.borderless)
                                 }
                             }
-                            .listRowBackground(Color(red: 0.11, green: 0.11, blue: 0.12))
+                            .listRowBackground(Color(red: 0.14, green: 0.14, blue: 0.15))
+                            .foregroundStyle(.blue)
                         }
                     }
                     .scrollContentBackground(.hidden)
@@ -347,7 +362,6 @@ struct RudimentList: View {
             }
             .onAppear {
                 loadRudiments()
-                loadFavorites()
             }
         }
     }
@@ -388,28 +402,6 @@ struct RudimentList: View {
             try? encoded.write(to: fileURL)
         }
     }
-    
-    func loadFavorites() {
-        if let data = UserDefaults.standard.data(forKey: "favoriteRudimentIds"),
-           let ids = try? JSONDecoder().decode([Int].self, from: data) {
-            favoriteIds = Set(ids)
-        }
-    }
-    
-    func saveFavorites() {
-        if let encoded = try? JSONEncoder().encode(Array(favoriteIds)) {
-            UserDefaults.standard.set(encoded, forKey: "favoriteRudimentIds")
-        }
-    }
-    
-    func toggleFavorite(_ id: Int) {
-        if favoriteIds.contains(id) {
-            favoriteIds.remove(id)
-        } else {
-            favoriteIds.insert(id)
-        }
-        saveFavorites()
-    }
 }
 
 struct RudimentPractice: View {
@@ -430,14 +422,29 @@ struct RudimentPractice: View {
                 Text("\(Int(tempo))")
                     .foregroundStyle(.white)
                     .font(.system(size: 50))
-                Slider(value: $tempo, in: 30...300)
-                    .onChange(of: tempo) {
-                        if isPlaying {
-                            stopMetronome()
-                            isPlaying = false
-                        }
+                HStack {
+                    Button {
+                        tempo -= 1
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.title)
                     }
-                    .padding(.horizontal)
+                    Slider(value: $tempo, in: 30...300)
+                        .onChange(of: tempo) {
+                            if isPlaying {
+                                stopMetronome()
+                                isPlaying = false
+                            }
+                        }
+                        .padding(.horizontal)
+                    Button {
+                        tempo += 1
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title)
+                    }
+                }
+                .padding()
                 Button {
                     isPlaying.toggle()
                     if isPlaying {
@@ -458,8 +465,7 @@ struct RudimentPractice: View {
                 } label: {
                     Text("Set")
                         .foregroundColor(.white)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 10)
+                        .padding()
                         .background(Color.blue)
                         .cornerRadius(8)
                 }
