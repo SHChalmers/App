@@ -10,51 +10,70 @@ import SwiftUI
 class AudioManager: ObservableObject {
     static let shared = AudioManager()
     
-    var clickPlayer: AVAudioPlayer?
-    var accentPlayer: AVAudioPlayer?
-    var lowerPlayer: AVAudioPlayer?
+    private var engine = AVAudioEngine()
+    private var player = AVAudioPlayerNode()
+    private var clickBuffer: AVAudioPCMBuffer!
+    private var accentBuffer: AVAudioPCMBuffer!
+    private var lowerBuffer: AVAudioPCMBuffer!
+    private var format: AVAudioFormat!
     
     private init() {
         setupAudio()
     }
     
     private func setupAudio() {
+        do {
+            let audioSession = AVAudioSession.sharedInstance()
+            try audioSession.setCategory(.playback, mode: .default)
+            try audioSession.setActive(true)
+        } catch {
+            print("Failed to set audio session category: \(error)")
+        }
         guard let url = Bundle.main.url(forResource: "tone-800", withExtension: "wav") else { return }
         do {
-            clickPlayer = try AVAudioPlayer(contentsOf: url)
-            clickPlayer?.prepareToPlay()
-        } catch {
-            print("Error loading sound: \(error)")
-        }
-        guard let accenturl = Bundle.main.url(forResource: "tone-1000", withExtension: "wav") else { return }
+            let file = try AVAudioFile(forReading: url)
+            format = file.processingFormat
+            let frameCount = AVAudioFrameCount(min(UInt64(file.length), UInt64(UInt32.max)))
+            clickBuffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount)!
+            try file.read(into: clickBuffer)
+            clickBuffer.frameLength = frameCount
+        } catch { print("Error loading click: \(error)"); return }
+        
+        guard let accentUrl = Bundle.main.url(forResource: "tone-1000", withExtension: "wav") else { return }
         do {
-            accentPlayer = try AVAudioPlayer(contentsOf: accenturl)
-            accentPlayer?.prepareToPlay()
-        } catch {
-            print("Error loading sound: \(error)")
-        }
-        guard let lowerurl = Bundle.main.url(forResource: "tone-800lower", withExtension: "wav") else { return }
+            let file = try AVAudioFile(forReading: accentUrl)
+            let frameCount = AVAudioFrameCount(min(UInt64(file.length), UInt64(UInt32.max)))
+            accentBuffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount)!
+            try file.read(into: accentBuffer)
+            accentBuffer.frameLength = frameCount
+        } catch { print("Error loading accent: \(error)"); return }
+        
+        guard let lowerUrl = Bundle.main.url(forResource: "tone-800lower", withExtension: "wav") else { return }
         do {
-            lowerPlayer = try AVAudioPlayer(contentsOf: lowerurl)
-            lowerPlayer?.prepareToPlay()
-        } catch {
-            print("Error loading sound: \(error)")
-        }
+            let file = try AVAudioFile(forReading: lowerUrl)
+            let frameCount = AVAudioFrameCount(min(UInt64(file.length), UInt64(UInt32.max)))
+            lowerBuffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount)!
+            try file.read(into: lowerBuffer)
+            lowerBuffer.frameLength = frameCount
+        } catch { print("Error loading lower: \(error)"); return }
+        
+        engine.attach(player)
+        engine.connect(player, to: engine.mainMixerNode, format: format)
+        engine.prepare()
+        do { try engine.start() } catch { print("Engine start error: \(error)"); return }
+        player.play()
     }
     
     func playClick() {
-        clickPlayer?.currentTime = 0
-        clickPlayer?.play()
+        player.scheduleBuffer(clickBuffer, at: nil, options: [], completionHandler: nil)
     }
     
     func playAccent() {
-        accentPlayer?.currentTime = 0
-        accentPlayer?.play()
+        player.scheduleBuffer(accentBuffer, at: nil, options: [], completionHandler: nil)
     }
     
     func playLower() {
-        lowerPlayer?.currentTime = 0
-        lowerPlayer?.play()
+        player.scheduleBuffer(lowerBuffer, at: nil, options: [], completionHandler: nil)
     }
 }
 
@@ -220,7 +239,7 @@ struct MainMetronome: View {
                         .frame(maxWidth: .infinity)
                     }
                 }
-                .frame(width: .infinity, height: 100)
+                .frame(height: 100)
                 
                 Button {
                     isPlaying.toggle()
@@ -258,6 +277,7 @@ struct MainMetronome: View {
         }
         .onDisappear {
             stopMetronome()
+            isPlaying = false
         }
         .sheet(isPresented: $showSettings) {
             SettingsView(timeSignature: $timeSignature, subdivision: $subdivision)
@@ -310,11 +330,10 @@ struct RudimentList: View {
                     .ignoresSafeArea()
                 VStack {
                     HStack {
-                        Spacer()
-                        Button("Category") {
+                        Button(selectedCategory) {
                             showingMenu = true
                         }
-                        .padding(.trailing, 45)
+                        .padding(15)
                         .confirmationDialog("Select Category", isPresented: $showingMenu) {
                             Button("Favorites") {
                                 selectedCategory = "Favorites"
@@ -498,6 +517,10 @@ struct RudimentPractice: View {
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
             tempo = Double(rudiment.bpm)
+        }
+        .onDisappear {
+            isPlaying = false
+            stopMetronome()
         }
     }
     func startMetronome() {
